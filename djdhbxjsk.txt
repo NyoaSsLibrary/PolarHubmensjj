@@ -111,16 +111,16 @@ local function sendWebhook(brainrotName, generation, playerCount, jobId)
             username = "Tric Trac AJ",
             avatar_url = "",
             embeds = {{
-                title = "TRIC TRAC NOTIFY",
+                title = "TRIC TRAC SCANNER",
                 color = 5763719,
                 fields = {
                     { name = "🧠 Brainrot", value = tostring(brainrotName), inline = true },
                     { name = "💰 Generation", value = tostring(generation), inline = true },
                     { name = "👥 Players", value = tostring(playerCount), inline = true },
                     { name = "🆔 Job ID", value = "```" .. tostring(jobId) .. "```", inline = false },
-                    { name = "🔗 Join Server", value = joinLink, inline = false },
+                    { name = "🔗 Join Server", value = string.format("[Click to join](%s)", joinLink), inline = false },
                 },
-                footer = { text = "Tric Trac AJ" },
+                footer = { text = "Tric Trac Scanner • Auto Hop" },
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
             }}
         })
