@@ -44,6 +44,7 @@ local visitedServers = shared.TricTracVisited or {}
 if not table.find(visitedServers, game.JobId) then
     table.insert(visitedServers, game.JobId)
 end
+shared.TricTracVisited = visitedServers
 
 local configFolder = "TricTracScanner"
 local configPath = configFolder .. "/config.json"
@@ -96,7 +97,7 @@ end
 
 local function sendWebhook(brainrotName, generation, playerCount, jobId)
     pcall(function()
-        local joinLink = "https://www.roblox.com/games/start?placeId=" .. tostring(game.PlaceId) .. "&gameInstanceId=" .. tostring(jobId)
+        local joinLink = "roblox://experiences/start?placeId=" .. tostring(game.PlaceId) .. "&gameInstanceId=" .. tostring(jobId)
         
         local payload = HttpService:JSONEncode({
             username = "Tric Trac AJ",
@@ -109,7 +110,7 @@ local function sendWebhook(brainrotName, generation, playerCount, jobId)
                     { name = "💰 Generation", value = tostring(generation), inline = true },
                     { name = "👥 Players", value = tostring(playerCount), inline = true },
                     { name = "🆔 Job ID", value = "```" .. tostring(jobId) .. "```", inline = false },
-                    { name = "🔗 Join Server", value = "[Click to Join Server](" .. joinLink .. ")", inline = false },
+                    { name = "🔗 Join Server", value = "[Click to Launch & Join Server](" .. joinLink .. ")", inline = false },
                 },
                 footer = { text = "Tric Trac Scanner • Auto Hop" },
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
@@ -154,7 +155,7 @@ local function serverHop()
         local data = HttpService:JSONDecode(res)
         if data and data.data then
             for _, server in pairs(data.data) do
-                if type(server) == "table" and server.id ~= game.JobId and server.playing and server.playing < server.maxPlayers then
+                if type(server) == "table" and server.id and server.id ~= game.JobId and server.playing and server.playing < server.maxPlayers then
                     if not table.find(visitedServers, server.id) then
                         table.insert(serverList, server.id)
                     end
@@ -163,9 +164,27 @@ local function serverHop()
         end
     end)
     
+    if #serverList == 0 then
+        visitedServers = {game.JobId}
+        shared.TricTracVisited = visitedServers
+        pcall(function()
+            local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
+            local res = game:HttpGet(url)
+            local data = HttpService:JSONDecode(res)
+            if data and data.data then
+                for _, server in pairs(data.data) do
+                    if type(server) == "table" and server.id and server.id ~= game.JobId and server.playing and server.playing < server.maxPlayers then
+                        table.insert(serverList, server.id)
+                    end
+                end
+            end
+        end)
+    end
+    
     if #serverList > 0 then
         local chosenServer = serverList[math.random(1, #serverList)]
         table.insert(visitedServers, chosenServer)
+        shared.TricTracVisited = visitedServers
         
         local queue = queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport)
         if queue then
@@ -176,7 +195,6 @@ local function serverHop()
         
         TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, Player)
     else
-        visitedServers = {game.JobId}
         TeleportService:Teleport(game.PlaceId, Player)
     end
 end
@@ -337,15 +355,15 @@ connectWebSocket()
 task.spawn(function()
     while true do
         pcall(scan)
-        task.wait(1)
+        task.wait(0.1)
     end
 end)
 
 task.spawn(function()
     while true do
-        task.wait(10)
+        task.wait(15)
         if hopEnabled then
-            print("[TricTrac] Hopping to new server (10s interval)...")
+            print("[TricTrac] Hopping to new server (Strict 15s interval)...")
             pcall(serverHop)
         end
     end
