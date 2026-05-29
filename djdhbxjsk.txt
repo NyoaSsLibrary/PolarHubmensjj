@@ -1,3 +1,6 @@
+-- TRIC TRAC SCANNER + HOP
+-- Webhook + WebSocket + Server Hop + Config System
+
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local TeleportService = game:GetService("TeleportService")
@@ -97,7 +100,7 @@ end
 
 local function sendWebhook(brainrotName, generation, playerCount, jobId)
     pcall(function()
-        local joinLink = "https://www.roblox.com/start?placeId=" .. tostring(game.PlaceId) .. "&gameInstanceId=" .. tostring(jobId)
+        local joinLink = "https://www.roblox.com/games/start?placeId=" .. tostring(game.PlaceId) .. "&gameInstanceId=" .. tostring(jobId)
         
         local payload = HttpService:JSONEncode({
             username = "Tric Trac AJ",
@@ -110,7 +113,7 @@ local function sendWebhook(brainrotName, generation, playerCount, jobId)
                     { name = "💰 Generation", value = tostring(generation), inline = true },
                     { name = "👥 Players", value = tostring(playerCount), inline = true },
                     { name = "🆔 Job ID", value = "```" .. tostring(jobId) .. "```", inline = false },
-                    { name = "🔗 Join Server", value = joinLink, inline = false },
+                    { name = "🔗 Join Server", value = "[Click to Launch & Join Server](" .. joinLink .. ")", inline = false },
                 },
                 footer = { text = "Tric Trac Scanner • Auto Hop" },
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
