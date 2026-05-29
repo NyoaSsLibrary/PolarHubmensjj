@@ -5,181 +5,198 @@ local HttpService = game:GetService("HttpService")
 local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
-
 local CoreGui = (gethui and gethui()) or game:GetService("CoreGui")
 local GuiName = "TricTracScanner"
-
 for _, v in pairs(CoreGui:GetChildren()) do
-    if v.Name == GuiName then v:Destroy() end
+if v.Name == GuiName then v:Destroy() end
 end
-
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = GuiName
 ScreenGui.Parent = CoreGui
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.ResetOnSpawn = false
-
+local function playClick() end
 local WEBHOOK_URL = "https://discord.com/api/webhooks/1509589744055488772/NvZ43exSDnAdNM2h3Y97ZlRbaf4wG1Tkssv7O54xs2evI3HSW8jVm2zhqfoUDF57g1kF"
 local WS_URL = "wss://trictracaj.onrender.com"
-
 local hopEnabled = false
-local minValue = 1000000
+local minValue = 1000
 local loggedItems = {}
-
 local configFolder = "TricTracScanner"
 local configPath = configFolder .. "/config.json"
-
 local function saveConfig()
-    pcall(function()
-        if not isfolder(configFolder) then
-            makefolder(configFolder)
-        end
-        local data = HttpService:JSONEncode({
-            hopEnabled = hopEnabled,
-            minValue = minValue
-        })
-        writefile(configPath, data)
-    end)
+pcall(function()
+if not isfolder(configFolder) then
+makefolder(configFolder)
 end
-
+local data = HttpService:JSONEncode({
+hopEnabled = hopEnabled,
+minValue = minValue
+})
+writefile(configPath, data)
+end)
+end
 local function loadConfig()
-    pcall(function()
-        if isfile(configPath) then
-            local data = HttpService:JSONDecode(readfile(configPath))
-            if type(data) == "table" then
-                if data.hopEnabled ~= nil then hopEnabled = data.hopEnabled end
-                if data.minValue ~= nil then minValue = data.minValue end
-            end
-        end
-    end)
+pcall(function()
+if isfile(configPath) then
+local data = HttpService:JSONDecode(readfile(configPath))
+if type(data) == "table" then
+if data.hopEnabled ~= nil then hopEnabled = data.hopEnabled end
+if data.minValue ~= nil then minValue = data.minValue end
 end
-
+end
+end)
+end
 loadConfig()
-
 local ws = nil
 local function connectWebSocket()
-    if ws then return end
-    local success, sock = pcall(function()
-        if WebSocket then return WebSocket.connect(WS_URL) end
-        if syn and syn.websocket then return syn.websocket.connect(WS_URL) end
-        if fluxus and fluxus.websocket then return fluxus.websocket.connect(WS_URL) end
-        if websocket and websocket.connect then return websocket.connect(WS_URL) end
-        return nil
-    end)
-    if not success or not sock then return end
-    ws = sock
-    ws.OnClose:Connect(function()
-        ws = nil
-        task.wait(1)
-        connectWebSocket()
-    end)
+if ws then return end
+local success, sock = pcall(function()
+if WebSocket then return WebSocket.connect(WS_URL) end
+if syn and syn.websocket then return syn.websocket.connect(WS_URL) end
+if fluxus and fluxus.websocket then return fluxus.websocket.connect(WS_URL) end
+if websocket and websocket.connect then return websocket.connect(WS_URL) end
+return nil
+end)
+if not success or not sock then return end
+ws = sock
+ws.OnClose:Connect(function()
+ws = nil
+task.wait(1)
+connectWebSocket()
+end)
 end
-
 local function buildJoinLink(placeId, jobId)
-    return string.format("https://chillihub1.github.io/chillihub-joiner/?placeId=%d&gameInstanceId=%s", placeId, jobId)
+return string.format(
+"https://chillihub1.github.io/chillihub-joiner/?placeId=%d&gameInstanceId=%s",
+placeId,
+jobId
+)
 end
-
 local function sendWebhook(bestName, bestGen, extraBrainrots, playerCount, jobId)
-    pcall(function()
-        local joinLink = buildJoinLink(game.PlaceId, jobId)
-        local brainrotsValue = bestName .. " | " .. bestGen
-        if #extraBrainrots > 0 then
-            brainrotsValue = brainrotsValue .. "\n" .. table.concat(extraBrainrots, "\n")
-        end
-        local payload = HttpService:JSONEncode({
-            username = "Tric Trac AJ",
-            avatar_url = "",
-            embeds = {{
-                title = "🙈 Brainrot Notify",
-                color = 5763719,
-                fields = {
-                    { name = "🏷️ Name", value = tostring(bestName), inline = true },
-                    { name = "💰 Money per sec", value = tostring(bestGen), inline = true },
-                    { name = "👥 Players", value = tostring(playerCount), inline = true },
-                    { name = "🎭 All Brainrots (>" .. tostring(minValue) .. ")", value = brainrotsValue, inline = false },
-                    { name = "🆔 Job ID", value = "```" .. tostring(jobId) .. "```", inline = false },
-                    { name = "🔗 Join Server", value = string.format("[Click to join](%s)", joinLink), inline = false },
-                },
-                footer = { text = "Moby Notifier | v1.6" },
-                timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-            }}
-        })
-        local req = syn and syn.request or http and http.request or request
-        req({ Url = WEBHOOK_URL, Method = "POST", Headers = { ["Content-Type"] = "application/json" }, Body = payload })
-    end)
+pcall(function()
+local joinLink = buildJoinLink(game.PlaceId, jobId)
+local brainrotsValue = bestName .. " | " .. bestGen
+if #extraBrainrots > 0 then
+brainrotsValue = brainrotsValue .. "\n" .. table.concat(extraBrainrots, "\n")
 end
-
+local payload = HttpService:JSONEncode({
+username = "Tric Trac AJ",
+avatar_url = "",
+embeds = {{
+title = "🙈 Brainrot Notify",
+color = 5763719,
+fields = {
+{ name = "🏷️ Name", value = tostring(bestName), inline = true },
+{ name = "💰 Money per sec", value = tostring(bestGen), inline = true },
+{ name = "👥 Players", value = tostring(playerCount), inline = true },
+{ name = "🎭 All Brainrots (>" .. tostring(minValue) .. ")", value = brainrotsValue, inline = false },
+{ name = "🆔 Job ID", value = "" .. tostring(jobId) .. "", inline = false },
+{ name = "🔗 Join Server", value = string.format("Click to join", joinLink), inline = false },
+},
+footer = { text = "Moby Notifier | v1.6" },
+timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+}}
+})
+if syn and syn.request then
+syn.request({ Url = WEBHOOK_URL, Method = "POST", Headers = { ["Content-Type"] = "application/json" }, Body = payload })
+elseif http and http.request then
+http.request({ Url = WEBHOOK_URL, Method = "POST", Headers = { ["Content-Type"] = "application/json" }, Body = payload })
+elseif request then
+request({ Url = WEBHOOK_URL, Method = "POST", Headers = { ["Content-Type"] = "application/json" }, Body = payload })
+end
+end)
+end
 local function sendWebSocket(brainrotName, generation, playerCount, jobId)
-    if not ws then return end
-    pcall(function()
-        local currentJobId = jobId or game.JobId
-        ws:Send(HttpService:JSONEncode({brainrot = brainrotName, generation = generation, players = playerCount, jobId = currentJobId, joinLink = buildJoinLink(game.PlaceId, currentJobId)}))
-    end)
+if not ws then return end
+pcall(function()
+local currentJobId = jobId or game.JobId
+local joinLink = buildJoinLink(game.PlaceId, currentJobId)
+local data = HttpService:JSONEncode({
+brainrot = brainrotName,
+generation = generation,
+players = playerCount,
+jobId = currentJobId,
+joinLink = joinLink
+})
+ws:Send(data)
+end)
 end
-
 local function getValue(text)
-    if not text then return 0 end
-    local num = tonumber(text:match("[%d%.]+")) or 0
-    if text:find("[Mm]") then return num * 1000000
-    elseif text:find("[Kk]") then return num * 1000
-    elseif text:find("[Bb]") then return num * 1000000000
-    else return num end
+if not text then return 0 end
+local num = tonumber(text:match("[%d%.]+")) or 0
+if text:find("[Mm]") then return num * 1000000
+elseif text:find("[Kk]") then return num * 1000
+elseif text:find("[Bb]") then return num * 1000000000
+else return num end
 end
-
 local function serverHop()
-    Player.Character.HumanoidRootPart.Anchored = true
-    local _servers = "https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=10"
-    local Servers = HttpService:JSONDecode(game:HttpGet(_servers))
-    local Server = Servers.data[math.random(1,#Servers.data)]
-    TeleportService:TeleportToPlaceInstance(game.PlaceId, Server.id, Player)
+pcall(function()
+if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
+Player.Character.HumanoidRootPart.Anchored = true
 end
-
+local Api = "https://games.roblox.com/v1/games/"
+local _place = game.PlaceId
+local _servers = Api.._place.."/servers/Public?sortOrder=Asc&limit=10"
+local Raw = game:HttpGet(_servers)
+local Servers = HttpService:JSONDecode(Raw)
+if Servers and Servers.data and #Servers.data > 0 then
+local Server = Servers.data[math.random(1, #Servers.data)]
+TeleportService:TeleportToPlaceInstance(_place, Server.id, Player)
+end
+end)
+end
 local function scan()
-    local items = {}
-    local debris = Workspace:FindFirstChild("Debris")
-    if debris then
-        for _, obj in ipairs(debris:GetChildren()) do
-            local genLabel = obj:FindFirstChild("Generation", true) or obj:FindFirstChildWhichIsA("TextLabel")
-            if genLabel and genLabel.Text and genLabel.Text:find("%$") then
-                local value = getValue(genLabel.Text)
-                local display = obj:FindFirstChild("DisplayName", true) or obj:FindFirstChild("Displayname", true)
-                table.insert(items, { name = display and display.Text or "Unknown", gen = genLabel.Text, val = value })
-            end
-        end
-    end
-    local plots = Workspace:FindFirstChild("Plots")
-    if plots then
-        for _, plot in ipairs(plots:GetChildren()) do
-            local podiums = plot:FindFirstChild("AnimalPodiums")
-            if podiums then
-                for _, pod in ipairs(podiums:GetChildren()) do
-                    local gen = pod:FindFirstChild("Generation", true)
-                    if gen and gen:IsA("TextLabel") and gen.Text:find("%$") then
-                        local value = getValue(gen.Text)
-                        local display = pod:FindFirstChild("DisplayName", true) or pod:FindFirstChild("Displayname", true)
-                        table.insert(items, { name = display and display.Text or "Podium Animal", gen = gen.Text, val = value })
-                    end
-                end
-            end
-        end
-    end
-    table.sort(items, function(a, b) return a.val > b.val end)
-    if #items > 0 and items[1].val >= minValue then
-        local bestItem = items[1]
-        local logKey = bestItem.name .. "_" .. bestItem.gen .. "_" .. game.JobId
-        if not loggedItems[logKey] then
-            loggedItems[logKey] = true
-            local extraBrainrots = {}
-            for i = 2, math.min(#items, 8) do
-                if items[i].val >= minValue then table.insert(extraBrainrots, items[i].name .. " | " .. items[i].gen) end
-            end
-            local players = #Players:GetPlayers() .. "/" .. Players.MaxPlayers
-            sendWebhook(bestItem.name, bestItem.gen, extraBrainrots, players, game.JobId)
-            sendWebSocket(bestItem.name, bestItem.gen, players, game.JobId)
-        end
-    end
+local items = {}
+local debris = Workspace:FindFirstChild("Debris")
+if debris then
+for _, obj in ipairs(debris:GetChildren()) do
+local genLabel = obj:FindFirstChild("Generation", true) or obj:FindFirstChildWhichIsA("TextLabel")
+if genLabel and genLabel.Text and genLabel.Text:find("%$") then
+local value = getValue(genLabel.Text)
+local display = obj:FindFirstChild("DisplayName", true) or obj:FindFirstChild("Displayname", true)
+local name = display and display.Text or "Unknown"
+table.insert(items, { name = name, gen = genLabel.Text, val = value })
 end
-
+end
+end
+local plots = Workspace:FindFirstChild("Plots")
+if plots then
+for _, plot in ipairs(plots:GetChildren()) do
+local podiums = plot:FindFirstChild("AnimalPodiums")
+if podiums then
+for _, pod in ipairs(podiums:GetChildren()) do
+local gen = pod:FindFirstChild("Generation", true)
+if gen and gen:IsA("TextLabel") and gen.Text:find("%$") then
+local value = getValue(gen.Text)
+local display = pod:FindFirstChild("DisplayName", true) or pod:FindFirstChild("Displayname", true)
+local name = display and display.Text or "Podium Animal"
+table.insert(items, { name = name, gen = gen.Text, val = value })
+end
+end
+end
+end
+end
+table.sort(items, function(a, b)
+return a.val > b.val
+end)
+if #items > 0 and items[1].val >= minValue then
+local bestItem = items[1]
+local logKey = bestItem.name .. "*" .. bestItem.gen .. "*" .. game.JobId
+if not loggedItems[logKey] then
+loggedItems[logKey] = true
+local extraBrainrots = {}
+for i = 2, math.min(#items, 8) do
+if items[i].val >= minValue then
+table.insert(extraBrainrots, items[i].name .. " | " .. items[i].gen)
+end
+end
+local players = #Players:GetPlayers() .. "/" .. Players.MaxPlayers
+sendWebhook(bestItem.name, bestItem.gen, extraBrainrots, players, game.JobId)
+sendWebSocket(bestItem.name, bestItem.gen, players, game.JobId)
+print(string.format("[TricTrac] Found %s (%s) - value %s", bestItem.name, bestItem.gen, bestItem.val))
+end
+end
+end
 local Frame = Instance.new("CanvasGroup", ScreenGui)
 Frame.BackgroundColor3 = Color3.fromRGB(8, 18, 10)
 Frame.BackgroundTransparency = 0.1
@@ -191,20 +208,19 @@ Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 10)
 local frameStroke = Instance.new("UIStroke", Frame)
 frameStroke.Color = Color3.fromRGB(70, 210, 90)
 frameStroke.Thickness = 1.5
-
 local dragging, dragStart, startPos = false, nil, nil
 Frame.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true; dragStart = input.Position; startPos = Frame.Position
-    end
+if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+dragging = true; dragStart = input.Position; startPos = Frame.Position
+input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
+end
 end)
 UserInputService.InputChanged:Connect(function(input)
-    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        local delta = input.Position - dragStart
-        Frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset+delta.X, startPos.Y.Scale, startPos.Y.Offset+delta.Y)
-    end
+if dragging and dragStart and startPos and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+local delta = input.Position - dragStart
+Frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset+delta.X, startPos.Y.Scale, startPos.Y.Offset+delta.Y)
+end
 end)
-
 local Title = Instance.new("TextLabel", Frame)
 Title.BackgroundTransparency = 1
 Title.Size = UDim2.new(1, 0, 0, 30)
@@ -213,7 +229,6 @@ Title.Font = Enum.Font.GothamBold
 Title.Text = "TRIC TRAC SCANNER"
 Title.TextColor3 = Color3.fromRGB(140, 255, 150)
 Title.TextSize = 18
-
 local hopToggle = Instance.new("TextButton", Frame)
 hopToggle.Position = UDim2.new(0, 15, 0, 40)
 hopToggle.Size = UDim2.new(0, 120, 0, 30)
@@ -224,28 +239,30 @@ hopToggle.Font = Enum.Font.GothamBold
 hopToggle.TextSize = 12
 Instance.new("UICorner", hopToggle).CornerRadius = UDim.new(0, 6)
 hopToggle.MouseButton1Click:Connect(function()
-    hopEnabled = not hopEnabled
-    hopToggle.BackgroundColor3 = hopEnabled and Color3.fromRGB(60, 200, 80) or Color3.fromRGB(30, 70, 35)
-    hopToggle.Text = hopEnabled and "Hop: ON" or "Hop: OFF"
-    saveConfig()
+hopEnabled = not hopEnabled
+hopToggle.BackgroundColor3 = hopEnabled and Color3.fromRGB(60, 200, 80) or Color3.fromRGB(30, 70, 35)
+hopToggle.Text = hopEnabled and "Hop: ON" or "Hop: OFF"
+saveConfig()
+playClick()
 end)
-
 local valBox = Instance.new("TextBox", Frame)
 valBox.Position = UDim2.new(0, 150, 0, 40)
 valBox.Size = UDim2.new(0, 135, 0, 30)
 valBox.BackgroundColor3 = Color3.fromRGB(15, 30, 18)
 valBox.Text = tostring(minValue)
+valBox.PlaceholderText = "Min value (e.g. 1000)"
 valBox.TextColor3 = Color3.fromRGB(200, 240, 200)
 valBox.Font = Enum.Font.GothamMedium
 valBox.TextSize = 12
 Instance.new("UICorner", valBox).CornerRadius = UDim.new(0, 6)
 Instance.new("UIStroke", valBox).Color = Color3.fromRGB(70, 210, 90)
 valBox.FocusLost:Connect(function()
-    minValue = tonumber(valBox.Text) or 1000
-    valBox.Text = tostring(minValue)
-    saveConfig()
+local num = tonumber(valBox.Text)
+if num then minValue = math.floor(num) else minValue = 1000 end
+valBox.Text = tostring(minValue)
+saveConfig()
+playClick()
 end)
-
 local status = Instance.new("TextLabel", Frame)
 status.BackgroundTransparency = 1
 status.Position = UDim2.new(0, 15, 0, 80)
@@ -254,7 +271,6 @@ status.Font = Enum.Font.Gotham
 status.Text = "Scanning..."
 status.TextColor3 = Color3.fromRGB(200, 240, 200)
 status.TextSize = 11
-
 local closeBtn = Instance.new("TextButton", Frame)
 closeBtn.Position = UDim2.new(1, -30, 0, 5)
 closeBtn.Size = UDim2.new(0, 20, 0, 20)
@@ -263,34 +279,33 @@ closeBtn.Text = "✕"
 closeBtn.TextColor3 = Color3.fromRGB(255, 70, 70)
 closeBtn.Font = Enum.Font.GothamBold
 closeBtn.TextSize = 14
-closeBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
-
+closeBtn.MouseButton1Click:Connect(function()
+ScreenGui:Destroy()
+end)
 connectWebSocket()
-
 task.spawn(function()
-    while true do
-        pcall(scan)
-        task.wait(0.1)
-    end
+while true do
+pcall(scan)
+task.wait(1)
+end
 end)
-
 task.spawn(function()
-    while true do
-        task.wait(5)
-        if hopEnabled then serverHop() end
-    end
+while true do
+task.wait(10)
+if hopEnabled then
+serverHop()
+end
+end
 end)
-
 task.spawn(function()
-    while true do
-        task.wait(1)
-        if not ws then connectWebSocket() end
-    end
+while true do
+task.wait(5)
+if not ws then connectWebSocket() end
+end
 end)
-
 task.spawn(function()
-    while true do
-        status.Text = string.format("Hop: %s | Threshold: %s | Scanning...", hopEnabled and "ON" or "OFF", minValue)
-        task.wait(0.5)
-    end
+while true do
+status.Text = string.format("Hop: %s | Threshold: %s | Scanning...", hopEnabled and "ON" or "OFF", minValue)
+task.wait(0.5)
+end
 end)
