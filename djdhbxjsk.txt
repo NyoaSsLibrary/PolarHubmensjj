@@ -97,7 +97,7 @@ end
 
 local function sendWebhook(brainrotName, generation, playerCount, jobId)
     pcall(function()
-        local joinLink = "roblox://experiences/start?placeId=" .. tostring(game.PlaceId) .. "&gameInstanceId=" .. tostring(jobId)
+        local joinLink = "https://www.roblox.com/start?placeId=" .. tostring(game.PlaceId) .. "&gameInstanceId=" .. tostring(jobId)
         
         local payload = HttpService:JSONEncode({
             username = "Tric Trac AJ",
