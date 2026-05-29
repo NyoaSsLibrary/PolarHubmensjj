@@ -1,6 +1,3 @@
--- TRIC TRAC SCANNER + HOP
--- Webhook + WebSocket + Server Hop + Config System
-
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local TeleportService = game:GetService("TeleportService")
@@ -98,24 +95,32 @@ local function connectWebSocket()
     end)
 end
 
+local function buildJoinLink(placeId, jobId)
+    return string.format(
+        "https://chillihub1.github.io/chillihub-joiner/?placeId=%d&gameInstanceId=%s",
+        placeId,
+        jobId
+    )
+end
+
 local function sendWebhook(brainrotName, generation, playerCount, jobId)
     pcall(function()
-        local joinLink = "https://www.roblox.com/games/start?placeId=" .. tostring(game.PlaceId) .. "&gameInstanceId=" .. tostring(jobId)
+        local joinLink = buildJoinLink(game.PlaceId, jobId)
         
         local payload = HttpService:JSONEncode({
             username = "Tric Trac AJ",
             avatar_url = "",
             embeds = {{
-                title = "TRIC TRAC SCANNER",
+                title = "TRIC TRAC NOTIFY",
                 color = 5763719,
                 fields = {
                     { name = "🧠 Brainrot", value = tostring(brainrotName), inline = true },
                     { name = "💰 Generation", value = tostring(generation), inline = true },
                     { name = "👥 Players", value = tostring(playerCount), inline = true },
                     { name = "🆔 Job ID", value = "```" .. tostring(jobId) .. "```", inline = false },
-                    { name = "🔗 Join Server", value = "[Click to Launch & Join Server](" .. joinLink .. ")", inline = false },
+                    { name = "🔗 Join Server", value = joinLink, inline = false },
                 },
-                footer = { text = "Tric Trac Scanner • Auto Hop" },
+                footer = { text = "Tric Trac AJ" },
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
             }}
         })
@@ -132,11 +137,15 @@ end
 local function sendWebSocket(brainrotName, generation, playerCount, jobId)
     if not ws then return end
     pcall(function()
+        local currentJobId = jobId or game.JobId
+        local joinLink = buildJoinLink(game.PlaceId, currentJobId)
+        
         local data = HttpService:JSONEncode({
             brainrot = brainrotName,
             generation = generation,
             players = playerCount,
-            jobId = jobId or game.JobId
+            jobId = currentJobId,
+            joinLink = joinLink
         })
         ws:Send(data)
     end)
@@ -153,7 +162,7 @@ end
 local function serverHop()
     local serverList = {}
     pcall(function()
-        local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Desc&limit=100"
+        local url = "https://games.roproxy.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Desc&limit=100"
         local res = game:HttpGet(url)
         local data = HttpService:JSONDecode(res)
         if data and data.data then
@@ -171,7 +180,7 @@ local function serverHop()
         visitedServers = {game.JobId}
         shared.TricTracVisited = visitedServers
         pcall(function()
-            local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
+            local url = "https://games.roproxy.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
             local res = game:HttpGet(url)
             local data = HttpService:JSONDecode(res)
             if data and data.data then
