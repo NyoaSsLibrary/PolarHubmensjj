@@ -103,14 +103,14 @@ local function sendWebhook(brainrotName, generation, playerCount, jobId)
             username = "Tric Trac AJ",
             avatar_url = "",
             embeds = {{
-                title = "TRIC TRAC SCANNER",
+                title = "TRIC TRAC NOTIFIER",
                 color = 5763719,
                 fields = {
                     { name = "🧠 Brainrot", value = tostring(brainrotName), inline = true },
                     { name = "💰 Generation", value = tostring(generation), inline = true },
                     { name = "👥 Players", value = tostring(playerCount), inline = true },
                     { name = "🆔 Job ID", value = "```" .. tostring(jobId) .. "```", inline = false },
-                    { name = "🔗 Join Server", value = "[Click to Launch & Join Server](" .. joinLink .. ")", inline = false },
+                    { name = "🔗 Join Server", value = joinLink, inline = false },
                 },
                 footer = { text = "Tric Trac Scanner • Auto Hop" },
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
@@ -355,7 +355,7 @@ connectWebSocket()
 task.spawn(function()
     while true do
         pcall(scan)
-        task.wait(1)
+        task.wait(0.1)
     end
 end)
 
@@ -363,7 +363,7 @@ task.spawn(function()
     while true do
         task.wait(15)
         if hopEnabled then
-            print("[TricTrac] Hopping to new server (Strict 15s interval)...")
+            print("[TricTrac] Hopping to new server")
             pcall(serverHop)
         end
     end
