@@ -27,6 +27,7 @@ local WS_URL = "wss://trictracaj.onrender.com"
 local hopEnabled = false
 local minValue = 1000
 local loggedItems = {}
+local serverBlacklist = {}
 
 local configFolder = "TricTracScanner"
 local configPath = configFolder .. "/config.json"
@@ -59,6 +60,17 @@ end
 loadConfig()
 
 local ws = nil
+
+local function reportBlacklist(jobId)
+    if not ws then return end
+    pcall(function()
+        ws:Send(HttpService:JSONEncode({
+            action = "blacklist",
+            jobId = jobId
+        }))
+    end)
+end
+
 local function connectWebSocket()
     if ws then return end
     local success, sock = pcall(function()
@@ -70,10 +82,33 @@ local function connectWebSocket()
     end)
     if not success or not sock then return end
     ws = sock
+    
+    ws.OnMessage:Connect(function(msg)
+        pcall(function()
+            local data = HttpService:JSONDecode(msg)
+            if data.action == "sync_blacklist" then
+                if data.blacklist then
+                    for _, id in ipairs(data.blacklist) do
+                        serverBlacklist[id] = true
+                    end
+                end
+            elseif data.action == "blacklist" then
+                serverBlacklist[data.jobId] = true
+            elseif data.action == "unblacklist" then
+                serverBlacklist[data.jobId] = nil
+            end
+        end)
+    end)
+
     ws.OnClose:Connect(function()
         ws = nil
         task.wait(1)
         connectWebSocket()
+    end)
+    
+    task.spawn(function()
+        task.wait(1)
+        reportBlacklist(game.JobId)
     end)
 end
 
@@ -143,6 +178,8 @@ end
 
 local function serverHop()
     pcall(function()
+        reportBlacklist(game.JobId)
+        
         if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
             Player.Character.HumanoidRootPart.Anchored = true
         end
@@ -155,7 +192,20 @@ local function serverHop()
         local Servers = HttpService:JSONDecode(Raw)
         
         if Servers and Servers.data and #Servers.data > 0 then
-            local Server = Servers.data[math.random(1, #Servers.data)]
+            local validServers = {}
+            for _, s in ipairs(Servers.data) do
+                if s.id and s.id ~= game.JobId and not serverBlacklist[s.id] then
+                    table.insert(validServers, s)
+                end
+            end
+            
+            local Server = nil
+            if #validServers > 0 then
+                Server = validServers[math.random(1, #validServers)]
+            else
+                Server = Servers.data[math.random(1, #Servers.data)]
+            end
+            
             TeleportService:TeleportToPlaceInstance(_place, Server.id, Player)
         end
     end)
