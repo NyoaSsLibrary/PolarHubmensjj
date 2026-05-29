@@ -276,7 +276,7 @@ end)
 
 task.spawn(function()
     while true do
-        task.wait(3)
+        task.wait(5)
         if hopEnabled then serverHop() end
     end
 end)
