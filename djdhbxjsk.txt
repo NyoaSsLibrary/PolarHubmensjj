@@ -19,13 +19,11 @@ ScreenGui.Parent = CoreGui
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.ResetOnSpawn = false
 
-local function playClick() end
-
 local WEBHOOK_URL = "https://discord.com/api/webhooks/1509589744055488772/NvZ43exSDnAdNM2h3Y97ZlRbaf4wG1Tkssv7O54xs2evI3HSW8jVm2zhqfoUDF57g1kF"
 local WS_URL = "wss://trictracaj.onrender.com"
 
 local hopEnabled = false
-local minValue = 1000
+local minValue = 1000000
 local loggedItems = {}
 
 local configFolder = "TricTracScanner"
@@ -78,41 +76,36 @@ local function connectWebSocket()
 end
 
 local function buildJoinLink(placeId, jobId)
-    return string.format(
-        "https://chillihub1.github.io/chillihub-joiner/?placeId=%d&gameInstanceId=%s",
-        placeId,
-        jobId
-    )
+    return string.format("https://chillihub1.github.io/chillihub-joiner/?placeId=%d&gameInstanceId=%s", placeId, jobId)
 end
 
-local function sendWebhook(brainrotName, generation, playerCount, jobId)
+local function sendWebhook(bestName, bestGen, extraBrainrots, playerCount, jobId)
     pcall(function()
         local joinLink = buildJoinLink(game.PlaceId, jobId)
-        
+        local brainrotsValue = bestName .. " | " .. bestGen
+        if #extraBrainrots > 0 then
+            brainrotsValue = brainrotsValue .. "\n" .. table.concat(extraBrainrots, "\n")
+        end
         local payload = HttpService:JSONEncode({
             username = "Tric Trac AJ",
             avatar_url = "",
             embeds = {{
-                title = "TRIC TRAC SCANNER",
+                title = "🙈 Brainrot Notify",
                 color = 5763719,
                 fields = {
-                    { name = "🧠 Brainrot", value = tostring(brainrotName), inline = true },
-                    { name = "💰 Generation", value = tostring(generation), inline = true },
+                    { name = "🏷️ Name", value = tostring(bestName), inline = true },
+                    { name = "💰 Money per sec", value = tostring(bestGen), inline = true },
                     { name = "👥 Players", value = tostring(playerCount), inline = true },
+                    { name = "🎭 All Brainrots (>" .. tostring(minValue) .. ")", value = brainrotsValue, inline = false },
                     { name = "🆔 Job ID", value = "```" .. tostring(jobId) .. "```", inline = false },
                     { name = "🔗 Join Server", value = string.format("[Click to join](%s)", joinLink), inline = false },
                 },
-                footer = { text = "Tric Trac Scanner • Auto Hop" },
+                footer = { text = "Moby Notifier | v1.6" },
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
             }}
         })
-        if syn and syn.request then
-            syn.request({ Url = WEBHOOK_URL, Method = "POST", Headers = { ["Content-Type"] = "application/json" }, Body = payload })
-        elseif http and http.request then
-            http.request({ Url = WEBHOOK_URL, Method = "POST", Headers = { ["Content-Type"] = "application/json" }, Body = payload })
-        elseif request then
-            request({ Url = WEBHOOK_URL, Method = "POST", Headers = { ["Content-Type"] = "application/json" }, Body = payload })
-        end
+        local req = syn and syn.request or http and http.request or request
+        req({ Url = WEBHOOK_URL, Method = "POST", Headers = { ["Content-Type"] = "application/json" }, Body = payload })
     end)
 end
 
@@ -120,16 +113,7 @@ local function sendWebSocket(brainrotName, generation, playerCount, jobId)
     if not ws then return end
     pcall(function()
         local currentJobId = jobId or game.JobId
-        local joinLink = buildJoinLink(game.PlaceId, currentJobId)
-        
-        local data = HttpService:JSONEncode({
-            brainrot = brainrotName,
-            generation = generation,
-            players = playerCount,
-            jobId = currentJobId,
-            joinLink = joinLink
-        })
-        ws:Send(data)
+        ws:Send(HttpService:JSONEncode({brainrot = brainrotName, generation = generation, players = playerCount, jobId = currentJobId, joinLink = buildJoinLink(game.PlaceId, currentJobId)}))
     end)
 end
 
@@ -138,52 +122,31 @@ local function getValue(text)
     local num = tonumber(text:match("[%d%.]+")) or 0
     if text:find("[Mm]") then return num * 1000000
     elseif text:find("[Kk]") then return num * 1000
+    elseif text:find("[Bb]") then return num * 1000000000
     else return num end
 end
 
 local function serverHop()
-    pcall(function()
-        if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
-            Player.Character.HumanoidRootPart.Anchored = true
-        end
-        
-        local Api = "https://games.roblox.com/v1/games/"
-        local _place = game.PlaceId
-        local _servers = Api.._place.."/servers/Public?sortOrder=Asc&limit=10"
-        
-        local Raw = game:HttpGet(_servers)
-        local Servers = HttpService:JSONDecode(Raw)
-        
-        if Servers and Servers.data and #Servers.data > 0 then
-            local Server = Servers.data[math.random(1, #Servers.data)]
-            TeleportService:TeleportToPlaceInstance(_place, Server.id, Player)
-        end
-    end)
+    Player.Character.HumanoidRootPart.Anchored = true
+    local _servers = "https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=10"
+    local Servers = HttpService:JSONDecode(game:HttpGet(_servers))
+    local Server = Servers.data[math.random(1,#Servers.data)]
+    TeleportService:TeleportToPlaceInstance(game.PlaceId, Server.id, Player)
 end
 
 local function scan()
-    local highest = 0
-    local bestName = nil
-    local bestGen = nil
-    local bestJobId = game.JobId
-
+    local items = {}
     local debris = Workspace:FindFirstChild("Debris")
     if debris then
         for _, obj in ipairs(debris:GetChildren()) do
             local genLabel = obj:FindFirstChild("Generation", true) or obj:FindFirstChildWhichIsA("TextLabel")
             if genLabel and genLabel.Text and genLabel.Text:find("%$") then
                 local value = getValue(genLabel.Text)
-                if value > highest then
-                    highest = value
-                    bestGen = genLabel.Text
-                    local display = obj:FindFirstChild("DisplayName", true) or obj:FindFirstChild("Displayname", true)
-                    bestName = display and display.Text or "Unknown"
-                    bestJobId = game.JobId
-                end
+                local display = obj:FindFirstChild("DisplayName", true) or obj:FindFirstChild("Displayname", true)
+                table.insert(items, { name = display and display.Text or "Unknown", gen = genLabel.Text, val = value })
             end
         end
     end
-
     local plots = Workspace:FindFirstChild("Plots")
     if plots then
         for _, plot in ipairs(plots:GetChildren()) do
@@ -193,29 +156,26 @@ local function scan()
                     local gen = pod:FindFirstChild("Generation", true)
                     if gen and gen:IsA("TextLabel") and gen.Text:find("%$") then
                         local value = getValue(gen.Text)
-                        if value > highest then
-                            highest = value
-                            bestGen = gen.Text
-                            local display = pod:FindFirstChild("DisplayName", true) or pod:FindFirstChild("Displayname", true)
-                            bestName = display and display.Text or "Podium Animal"
-                            bestJobId = game.JobId
-                        end
+                        local display = pod:FindFirstChild("DisplayName", true) or pod:FindFirstChild("Displayname", true)
+                        table.insert(items, { name = display and display.Text or "Podium Animal", gen = gen.Text, val = value })
                     end
                 end
             end
         end
     end
-
-    if highest >= minValue then
-        local logKey = bestName .. "_" .. bestGen .. "_" .. bestJobId
-        
+    table.sort(items, function(a, b) return a.val > b.val end)
+    if #items > 0 and items[1].val >= minValue then
+        local bestItem = items[1]
+        local logKey = bestItem.name .. "_" .. bestItem.gen .. "_" .. game.JobId
         if not loggedItems[logKey] then
             loggedItems[logKey] = true
-            
+            local extraBrainrots = {}
+            for i = 2, math.min(#items, 8) do
+                if items[i].val >= minValue then table.insert(extraBrainrots, items[i].name .. " | " .. items[i].gen) end
+            end
             local players = #Players:GetPlayers() .. "/" .. Players.MaxPlayers
-            sendWebhook(bestName, bestGen, players, bestJobId)
-            sendWebSocket(bestName, bestGen, players, bestJobId)
-            print(string.format("[TricTrac] Found %s (%s) - value %s", bestName, bestGen, highest))
+            sendWebhook(bestItem.name, bestItem.gen, extraBrainrots, players, game.JobId)
+            sendWebSocket(bestItem.name, bestItem.gen, players, game.JobId)
         end
     end
 end
@@ -236,11 +196,10 @@ local dragging, dragStart, startPos = false, nil, nil
 Frame.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         dragging = true; dragStart = input.Position; startPos = Frame.Position
-        input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
     end
 end)
 UserInputService.InputChanged:Connect(function(input)
-    if dragging and dragStart and startPos and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
         local delta = input.Position - dragStart
         Frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset+delta.X, startPos.Y.Scale, startPos.Y.Offset+delta.Y)
     end
@@ -269,7 +228,6 @@ hopToggle.MouseButton1Click:Connect(function()
     hopToggle.BackgroundColor3 = hopEnabled and Color3.fromRGB(60, 200, 80) or Color3.fromRGB(30, 70, 35)
     hopToggle.Text = hopEnabled and "Hop: ON" or "Hop: OFF"
     saveConfig()
-    playClick()
 end)
 
 local valBox = Instance.new("TextBox", Frame)
@@ -277,18 +235,15 @@ valBox.Position = UDim2.new(0, 150, 0, 40)
 valBox.Size = UDim2.new(0, 135, 0, 30)
 valBox.BackgroundColor3 = Color3.fromRGB(15, 30, 18)
 valBox.Text = tostring(minValue)
-valBox.PlaceholderText = "Min value (e.g. 1000)"
 valBox.TextColor3 = Color3.fromRGB(200, 240, 200)
 valBox.Font = Enum.Font.GothamMedium
 valBox.TextSize = 12
 Instance.new("UICorner", valBox).CornerRadius = UDim.new(0, 6)
 Instance.new("UIStroke", valBox).Color = Color3.fromRGB(70, 210, 90)
 valBox.FocusLost:Connect(function()
-    local num = tonumber(valBox.Text)
-    if num then minValue = math.floor(num) else minValue = 1000 end
+    minValue = tonumber(valBox.Text) or 1000
     valBox.Text = tostring(minValue)
     saveConfig()
-    playClick()
 end)
 
 local status = Instance.new("TextLabel", Frame)
@@ -308,9 +263,7 @@ closeBtn.Text = "✕"
 closeBtn.TextColor3 = Color3.fromRGB(255, 70, 70)
 closeBtn.Font = Enum.Font.GothamBold
 closeBtn.TextSize = 14
-closeBtn.MouseButton1Click:Connect(function()
-    ScreenGui:Destroy()
-end)
+closeBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
 
 connectWebSocket()
 
@@ -324,9 +277,7 @@ end)
 task.spawn(function()
     while true do
         task.wait(10)
-        if hopEnabled then
-            serverHop()
-        end
+        if hopEnabled then serverHop() end
     end
 end)
 
