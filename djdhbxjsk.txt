@@ -27,8 +27,6 @@ local WS_URL = "wss://trictracaj.onrender.com"
 local hopEnabled = false
 local minValue = 1000
 local loggedItems = {}
-local serverBlacklist = {}
-local blacklistedCurrentServer = false
 
 local configFolder = "TricTracScanner"
 local configPath = configFolder .. "/config.json"
@@ -61,22 +59,6 @@ end
 loadConfig()
 
 local ws = nil
-
-local function reportBlacklist(jobId)
-    if not ws then return end
-    if jobId == game.JobId and blacklistedCurrentServer then return end
-    
-    pcall(function()
-        ws:Send(HttpService:JSONEncode({
-            action = "blacklist",
-            jobId = jobId
-        }))
-        if jobId == game.JobId then
-            blacklistedCurrentServer = true
-        end
-    end)
-end
-
 local function connectWebSocket()
     if ws then return end
     local success, sock = pcall(function()
@@ -88,33 +70,10 @@ local function connectWebSocket()
     end)
     if not success or not sock then return end
     ws = sock
-    
-    ws.OnMessage:Connect(function(msg)
-        pcall(function()
-            local data = HttpService:JSONDecode(msg)
-            if data.action == "sync_blacklist" then
-                if data.blacklist then
-                    for _, id in ipairs(data.blacklist) do
-                        serverBlacklist[id] = true
-                    end
-                end
-            elseif data.action == "blacklist" then
-                serverBlacklist[data.jobId] = true
-            elseif data.action == "unblacklist" then
-                serverBlacklist[data.jobId] = nil
-            end
-        end)
-    end)
-
     ws.OnClose:Connect(function()
         ws = nil
         task.wait(1)
         connectWebSocket()
-    end)
-    
-    task.spawn(function()
-        task.wait(9)
-        reportBlacklist(game.JobId)
     end)
 end
 
@@ -126,25 +85,24 @@ local function buildJoinLink(placeId, jobId)
     )
 end
 
-local function sendWebhook(brainrotName, generation, playerCount, jobId, allBrainrotsStr)
+local function sendWebhook(brainrotName, generation, playerCount, jobId)
     pcall(function()
         local joinLink = buildJoinLink(game.PlaceId, jobId)
         
         local payload = HttpService:JSONEncode({
-            username = "Brainrot Notify",
+            username = "Tric Trac AJ",
             avatar_url = "",
             embeds = {{
-                title = "🙈 Brainrot Notify",
-                color = 16750848,
+                title = "TRIC TRAC SCANNER",
+                color = 5763719,
                 fields = {
-                    { name = "🏷️ Name", value = tostring(brainrotName), inline = true },
-                    { name = "💰 Money per sec", value = tostring(generation), inline = true },
-                    { name = "👤 Players", value = tostring(playerCount), inline = true },
-                    { name = "🎭 All Brainrots (>" .. tostring(minValue) .. ")", value = "```\n" .. allBrainrotsStr .. "\n```", inline = false },
-                    { name = "🔗 Join Server", value = string.format("[Click to join](%s)", joinLink), inline = false },
+                    { name = "🧠 Brainrot", value = tostring(brainrotName), inline = true },
+                    { name = "💰 Generation", value = tostring(generation), inline = true },
+                    { name = "👥 Players", value = tostring(playerCount), inline = true },
                     { name = "🆔 Job ID", value = "```" .. tostring(jobId) .. "```", inline = false },
+                    { name = "🔗 Join Server", value = string.format("[Click to join](%s)", joinLink), inline = false },
                 },
-                footer = { text = "Tric Trac Scanner | v1.6" },
+                footer = { text = "Tric Trac Scanner • Auto Hop" },
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
             }}
         })
@@ -185,8 +143,6 @@ end
 
 local function serverHop()
     pcall(function()
-        reportBlacklist(game.JobId)
-        
         if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
             Player.Character.HumanoidRootPart.Anchored = true
         end
@@ -199,59 +155,32 @@ local function serverHop()
         local Servers = HttpService:JSONDecode(Raw)
         
         if Servers and Servers.data and #Servers.data > 0 then
-            local validServers = {}
-            for _, s in ipairs(Servers.data) do
-                if s.id and s.id ~= game.JobId and not serverBlacklist[s.id] then
-                    table.insert(validServers, s)
-                end
-            end
-            
-            local Server = nil
-            if #validServers > 0 then
-                Server = validServers[math.random(1, #validServers)]
-            else
-                Server = Servers.data[math.random(1, #Servers.data)]
-            end
-            
+            local Server = Servers.data[math.random(1, #Servers.data)]
             TeleportService:TeleportToPlaceInstance(_place, Server.id, Player)
         end
     end)
 end
 
 local function scan()
-    local foundItems = {}
     local highest = 0
     local bestName = nil
     local bestGen = nil
     local bestJobId = game.JobId
 
-    local function checkObj(obj, isPodium)
-        local genLabel = obj:FindFirstChild("Generation", true) or obj:FindFirstChildWhichIsA("TextLabel")
-        if genLabel and genLabel.Text and genLabel.Text:find("%$") then
-            local value = getValue(genLabel.Text)
-            if value >= minValue then
-                local display = obj:FindFirstChild("DisplayName", true) or obj:FindFirstChild("Displayname", true)
-                local name = display Image = display and display.Text or (isPodium and "Podium Animal" or "Unknown")
-                
-                table.insert(foundItems, {
-                    name = name,
-                    gen = genLabel.Text,
-                    value = value
-                })
-                
-                if value > highest then
-                    highest = value
-                    bestName = name
-                    bestGen = genLabel.Text
-                end
-            end
-        end
-    end
-
     local debris = Workspace:FindFirstChild("Debris")
     if debris then
         for _, obj in ipairs(debris:GetChildren()) do
-            checkObj(obj, false)
+            local genLabel = obj:FindFirstChild("Generation", true) or obj:FindFirstChildWhichIsA("TextLabel")
+            if genLabel and genLabel.Text and genLabel.Text:find("%$") then
+                local value = getValue(genLabel.Text)
+                if value > highest then
+                    highest = value
+                    bestGen = genLabel.Text
+                    local display = obj:FindFirstChild("DisplayName", true) or obj:FindFirstChild("Displayname", true)
+                    bestName = display and display.Text or "Unknown"
+                    bestJobId = game.JobId
+                end
+            end
         end
     end
 
@@ -261,36 +190,32 @@ local function scan()
             local podiums = plot:FindFirstChild("AnimalPodiums")
             if podiums then
                 for _, pod in ipairs(podiums:GetChildren()) do
-                    checkObj(pod, true)
+                    local gen = pod:FindFirstChild("Generation", true)
+                    if gen and gen:IsA("TextLabel") and gen.Text:find("%$") then
+                        local value = getValue(gen.Text)
+                        if value > highest then
+                            highest = value
+                            bestGen = gen.Text
+                            local display = pod:FindFirstChild("DisplayName", true) or pod:FindFirstChild("Displayname", true)
+                            bestName = display and display.Text or "Podium Animal"
+                            bestJobId = game.JobId
+                        end
+                    end
                 end
             end
         end
     end
 
-    if #foundItems > 0 and highest >= minValue then
-        table.sort(foundItems, function(a, b)
-            return a.value > b.value
-        end)
-
-        local lines = {}
-        for _, item in ipairs(foundItems) do
-            table.insert(lines, string.format("%s | %s", item.name, item.gen))
-        end
-        
-        local allBrainrotsStr = table.concat(lines, "\n")
-        if #allBrainrotsStr > 950 then
-            allBrainrotsStr = string.sub(allBrainrotsStr, 1, 950) .. "\n...and more"
-        end
-
-        local logKey = bestName .. "_" .. bestGen .. "_" .. bestJobId .. "_" .. tostring(#foundItems)
+    if highest >= minValue then
+        local logKey = bestName .. "_" .. bestGen .. "_" .. bestJobId
         
         if not loggedItems[logKey] then
             loggedItems[logKey] = true
             
             local players = #Players:GetPlayers() .. "/" .. Players.MaxPlayers
-            sendWebhook(bestName, bestGen, players, bestJobId, allBrainrotsStr)
+            sendWebhook(bestName, bestGen, players, bestJobId)
             sendWebSocket(bestName, bestGen, players, bestJobId)
-            print(string.format("[TricTrac] Found %d items. Highest: %s (%s)", #foundItems, bestName, bestGen))
+            print(string.format("[TricTrac] Found %s (%s) - value %s", bestName, bestGen, highest))
         end
     end
 end
