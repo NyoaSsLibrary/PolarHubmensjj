@@ -113,7 +113,7 @@ local function connectWebSocket()
     end)
     
     task.spawn(function()
-        task.wait(1)
+        task.wait(9)
         reportBlacklist(game.JobId)
     end)
 end
