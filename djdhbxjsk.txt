@@ -246,7 +246,7 @@ local function sendWebhook(bestName, bestGen, bestMutation, extraBrainrots, play
 			username = "Tric Trac AJ",
 			avatar_url = "",
 			embeds = {{
-				title = "🙈 Brainrot Notify",
+				title = "🐊 Brainrot Notify",
 				color = 5763719,
 				thumbnail = { url = thumbUrl },
 				fields = {
