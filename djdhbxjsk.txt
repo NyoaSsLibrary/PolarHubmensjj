@@ -281,7 +281,6 @@ local function sendWebSocket(brainrotName, generation, mutation, playerCount, jo
 			generation = generation,
 			mutation = mutation,
 			players = playerCount,
-			jobId = currentJobId,
 			joinLink = joinLink
 		})
 		ws:Send(data)
